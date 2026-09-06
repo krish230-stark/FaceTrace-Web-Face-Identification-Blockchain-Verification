@@ -102,10 +102,6 @@ def process_and_render(temp_path, input_type, original_filename):
 
     status = classify_result(result)
 
-    # ==========================================
-    # 2. REVERSE IMAGE SEARCH
-    #    Always run, even if no face
-    # ==========================================
 
     search_result = None
 
@@ -121,10 +117,6 @@ def process_and_render(temp_path, input_type, original_filename):
     except Exception as e:
         print("❌ Reverse image search failed:", e)
 
-    # ==========================================
-    # 3. BLOCKCHAIN
-    #    Always run if image hash exists
-    # ==========================================
 
     blockchain_result = None
 
@@ -160,24 +152,12 @@ def process_and_render(temp_path, input_type, original_filename):
 
         print("❌ Blockchain verification failed:", e)
 
-    # ==========================================
-    # 4. ADD RESULTS TO DISPLAY
-    # ==========================================
+  
 
     display["search_result"] = search_result
     display["blockchain_result"] = blockchain_result
 
-    # ==========================================
-    # 5. FINAL STATUS
-    # ==========================================
 
-    # ==========================================
-# 5. FINAL STATUS
-# ==========================================
-
-# ==========================================
-    # 5. FINAL STATUS
-    # ==========================================
 
     if status == "success":
         final_status = "success"
@@ -203,9 +183,7 @@ def process_and_render(temp_path, input_type, original_filename):
     )
 
 
-# ==========================================
-# HOME
-# ==========================================
+
 
 @app.route("/")
 def index():
@@ -218,9 +196,7 @@ def index():
     )
 
 
-# ==========================================
-# UPLOAD IMAGE
-# ==========================================
+
 
 @app.route("/upload", methods=["POST"])
 def upload():
@@ -254,9 +230,7 @@ def upload():
     )
 
 
-# ==========================================
-# CAMERA CAPTURE
-# ==========================================
+
 
 @app.route("/capture", methods=["POST"])
 def capture():
@@ -302,9 +276,6 @@ def capture():
     )
 
 
-# ==========================================
-# START SERVER
-# ==========================================
 
 if __name__ == "__main__":
 
