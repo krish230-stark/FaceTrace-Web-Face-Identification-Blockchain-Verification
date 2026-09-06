@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Face ID Verification</title>
+<style>
+  :root {
+    --bg: #0B0F14;
+    --panel: #121821;
+    --panel-border: #232B36;
+    --text: #E7ECF2;
+    --muted: #7C8896;
+    --accent: #4FD1C5;
+    --accent-dim: #2C7A72;
+    --danger: #F0655A;
+    --warning: #E8B84F;
+    --success: #4FD16B;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 20px;
+  }
+
+  .wordmark {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 600;
+    margin: 0 0 40px 0;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    max-width: 480px;
+    width: 100%;
+    padding: 32px;
+  }
+
+  .banner {
+    max-width: 480px;
+    width: 100%;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    border: 1px solid;
+  }
+
+  .banner.error {
+    border-color: var(--danger);
+    color: var(--danger);
+    background: rgba(240, 101, 90, 0.08);
+  }
+
+  .banner.warning {
+    border-color: var(--warning);
+    color: var(--warning);
+    background: rgba(232, 184, 79, 0.08);
+  }
+
+  .banner.success {
+    border-color: var(--success);
+    color: var(--success);
+    background: rgba(79, 209, 107, 0.08);
+  }
+
+  .tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 24px;
+    border: 1px solid var(--panel-border);
+    width: fit-content;
+  }
+
+  .tab {
+    font-family: var(--sans);
+    font-size: 13px;
+    padding: 8px 16px;
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    cursor: pointer;
+  }
+
+  .tab.active {
+    background: var(--accent-dim);
+    color: var(--bg);
+  }
+
+  .panel-section { display: none; }
+  .panel-section.active { display: block; }
+
+  .drop-zone {
+    border: 1px dashed var(--panel-border);
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .drop-zone:hover { border-color: var(--accent); }
+  .drop-zone.has-file {
+    color: var(--text);
+    border-style: solid;
+    border-color: var(--accent-dim);
+  }
+
+  #file-input { display: none; }
+
+  .camera-frame {
+    border: 1px solid var(--panel-border);
+    overflow: hidden;
+    background: #000;
+  }
+
+  video, canvas { width: 100%; display: block; }
+
+  .controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  button.action {
+    font-family: var(--sans);
+    font-size: 13px;
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent-dim);
+    padding: 9px 14px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+
+  button.action:hover { background: var(--accent-dim); color: var(--bg); }
+  button.action:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .submit-row { margin-top: 24px; }
+
+  button.primary {
+    width: 100%;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 12px;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+
+  button.primary:hover { background: #6EDDD3; }
+  button.primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .readout {
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.9;
+  }
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--panel-border);
+    padding: 6px 0;
+  }
+
+  .row .label { color: var(--muted); }
+  .row .value { color: var(--text); text-align: right; }
+  .value.success { color: var(--success); }
+  .value.fail { color: var(--danger); }
+
+  .hash-preview {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--accent);
+    word-break: break-all;
+  }
+
+  details {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  details .vector-preview {
+    margin-top: 8px;
+    word-break: break-all;
+  }
+
+  .retry-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  a.retry-link {
+    flex: 1;
+    text-align: center;
+    font-family: var(--sans);
+    font-size: 13px;
+    padding: 10px;
+    border: 1px solid var(--accent-dim);
+    color: var(--accent);
+    text-decoration: none;
+    border-radius: 3px;
+  }
+
+  a.retry-link:hover { background: var(--accent-dim); color: var(--bg); }
+</style>
+</head>
+<body>
+
+  <div class="wordmark">face-id-verification</div>
+  <h1>Identity Capture Console</h1>
+
+  {% if error %}
+  <div class="banner {{ 'warning' if status in ['no_face', 'multiple_faces'] else 'error' }}">
+    {{ error }}
+  </div>
+  {% endif %}
+
+  {% if status == 'success' %}
+    <div class="card">
+      <div class="banner success" style="margin-bottom:20px;">Face detected and encoded successfully.</div>
+      <div class="readout">
+        <div class="row"><span class="label">detection status</span><span class="value success">SUCCESS</span></div>
+        <div class="row"><span class="label">face detected</span><span class="value success">YES</span></div>
+        <div class="row"><span class="label">faces found</span><span class="value">{{ result.num_faces }}</span></div>
+        <div class="row"><span class="label">face location</span><span class="value">{{ result.face_location }}</span></div>
+        <div class="row"><span class="label">encoding generated</span><span class="value success">YES</span></div>
+        <div class="row"><span class="label">encoding dimensions</span><span class="value">{{ result.encoding_dimensions }}</span></div>
+        <div class="row"><span class="label">input type</span><span class="value">{{ result.input_type }}</span></div>
+        <div class="row"><span class="label">filename</span><span class="value">{{ result.filename }}</span></div>
+        <div class="row"><span class="label">dimensions</span><span class="value">{{ result.width }} x {{ result.height }}</span></div>
+        <div class="row"><span class="label">format</span><span class="value">{{ result.image_format }}</span></div>
+        <div class="row" style="border-bottom:none;"><span class="label">image hash</span></div>
+        <div class="hash-preview">{{ result.image_hash }}</div>
+
+
+
+
+        <hr style="border-color: var(--panel-border); margin: 24px 0;">
+
+<h3 style="font-size:15px; color:var(--accent);">
+  🔎 Reverse Image Search
+</h3>
+
+{% if result.search_result %}
+
+<div class="readout">
+
+  <div class="row">
+    <span class="label">title</span>
+    <span class="value">
+      {{ result.search_result.title }}
+    </span>
+  </div>
+
+  <div class="row">
+    <span class="label">source</span>
+    <span class="value">
+      {{ result.search_result.source }}
+    </span>
+  </div>
+
+  <div class="row">
+    <span class="label">url</span>
+    <span class="value">
+      <a
+        href="{{ result.search_result.url }}"
+        target="_blank"
+        style="color:var(--accent);"
+      >
+        Open Result
+      </a>
+    </span>
+  </div>
+
+</div>
+
+{% else %}
+
+<div class="banner warning">
+  No matching image found.
+</div>
+
+{% endif %}
+
+
+<h3 style="font-size:15px; color:var(--accent); margin-top:24px;">
+  ⛓️ Blockchain Verification
+</h3>
+
+{% if result.blockchain_result %}
+
+<div class="readout">
+
+  <div class="row">
+    <span class="label">verified</span>
+
+    {% if result.blockchain_result.verified %}
+      <span class="value success">YES</span>
+    {% else %}
+      <span class="value fail">NO</span>
+    {% endif %}
+
+  </div>
+
+  {% if result.blockchain_result.timestamp %}
+  <div class="row">
+    <span class="label">timestamp</span>
+    <span class="value">
+      {{ result.blockchain_result.timestamp }}
+    </span>
+  </div>
+  {% endif %}
+
+  {% if result.blockchain_result.uploader %}
+  <div class="row">
+    <span class="label">uploader</span>
+    <span class="value">
+      {{ result.blockchain_result.uploader }}
+    </span>
+  </div>
+  {% endif %}
+
+  {% if result.blockchain_result.tx_hash %}
+  <div class="row">
+    <span class="label">transaction</span>
+    <span class="value" style="word-break:break-all;">
+      {{ result.blockchain_result.tx_hash }}
+    </span>
+  </div>
+  {% endif %}
+
+</div>
+
+{% else %}
+
+<div class="banner error">
+  Blockchain verification failed.
+</div>
+
+{% endif %}
+
+
+
+        <!-- REVERSE IMAGE SEARCH RESULT -->
+      <div style="margin-top:24px; border-top:1px solid var(--panel-border); padding-top:20px;">
+        <h3 style="font-size:15px; color:var(--accent); margin-bottom:12px;">
+          🔎 Reverse Image Search
+        </h3>
+
+        {% if result.search_result %}
+          <div class="readout">
+            <div class="row">
+              <span class="label">title</span>
+              <span class="value">{{ result.search_result.title }}</span>
+            </div>
+
+            <div class="row">
+              <span class="label">source</span>
+              <span class="value">{{ result.search_result.source }}</span>
+            </div>
+
+            <div class="row">
+              <span class="label">result</span>
+              <span class="value success">MATCH FOUND</span>
+            </div>
+
+            <div style="margin-top:10px;">
+              <a
+                href="{{ result.search_result.url }}"
+                target="_blank"
+                style="color:var(--accent); font-size:12px; word-break:break-all;"
+              >
+                {{ result.search_result.url }}
+              </a>
+            </div>
+          </div>
+        {% else %}
+          <div class="value fail">
+            No matching image found.
+          </div>
+        {% endif %}
+      </div>
+
+
+      <!-- BLOCKCHAIN RESULT -->
+      <div style="margin-top:24px; border-top:1px solid var(--panel-border); padding-top:20px;">
+        <h3 style="font-size:15px; color:var(--accent); margin-bottom:12px;">
+          ⛓️ Blockchain Verification
+        </h3>
+
+        {% if result.blockchain_result %}
+          <div class="readout">
+
+            <div class="row">
+              <span class="label">blockchain status</span>
+
+              {% if result.blockchain_result.verified %}
+                <span class="value success">VERIFIED</span>
+              {% else %}
+                <span class="value fail">NOT VERIFIED</span>
+              {% endif %}
+            </div>
+
+            {% if result.blockchain_result.timestamp %}
+            <div class="row">
+              <span class="label">timestamp</span>
+              <span class="value">
+                {{ result.blockchain_result.timestamp }}
+              </span>
+            </div>
+            {% endif %}
+
+            {% if result.blockchain_result.uploader %}
+            <div class="row">
+              <span class="label">uploader</span>
+              <span class="value" style="word-break:break-all;">
+                {{ result.blockchain_result.uploader }}
+              </span>
+            </div>
+            {% endif %}
+
+            {% if result.blockchain_result.tx_hash %}
+            <div class="row">
+              <span class="label">transaction</span>
+              <span class="value" style="word-break:break-all;">
+                {{ result.blockchain_result.tx_hash }}
+              </span>
+            </div>
+            {% endif %}
+
+          </div>
+        {% else %}
+          <div class="value fail">
+            Blockchain verification unavailable.
+          </div>
+        {% endif %}
+      </div>
+      </div>
+
+      <details>
+        <summary>Show technical details (debug)</summary>
+        <div class="vector-preview">encoding[0:5] = {{ result.encoding_preview }}</div>
+      </details>
+
+      <div class="retry-buttons">
+        <a class="retry-link" href="/?tab=upload">Upload Another Photo</a>
+        <a class="retry-link" href="/?tab=camera">Capture Again</a>
+      </div>
+    </div>
+
+  {% elif status == 'no_face' or status == 'multiple_faces' %}
+
+<div class="card">
+
+  <div class="readout">
+
+    <div class="row">
+      <span class="label">face detection</span>
+      <span class="value fail">NO FACE</span>
+    </div>
+
+    <div class="row">
+      <span class="label">faces found</span>
+      <span class="value">{{ result.num_faces }}</span>
+    </div>
+
+    <div class="row">
+      <span class="label">input type</span>
+      <span class="value">{{ result.input_type }}</span>
+    </div>
+
+    <div class="row">
+      <span class="label">filename</span>
+      <span class="value">{{ result.filename }}</span>
+    </div>
+
+  </div>
+
+  <!-- IMAGE HASH -->
+
+  <h3 style="font-size:15px; color:var(--accent); margin-top:24px;">
+    🔐 Image Fingerprint
+  </h3>
+
+  <div class="hash-preview">
+    {{ result.image_hash }}
+  </div>
+
+  <!-- REVERSE SEARCH -->
+
+  <h3 style="font-size:15px; color:var(--accent); margin-top:24px;">
+    🔎 Reverse Image Search
+  </h3>
+
+  {% if result.search_result %}
+
+  <div class="readout">
+
+    <div class="row">
+      <span class="label">title</span>
+      <span class="value">
+        {{ result.search_result.title }}
+      </span>
+    </div>
+
+    <div class="row">
+      <span class="label">source</span>
+      <span class="value">
+        {{ result.search_result.source }}
+      </span>
+    </div>
+
+    <div class="row">
+      <span class="label">result</span>
+      <span class="value">
+        <a href="{{ result.search_result.url }}" target="_blank"
+           style="color:var(--accent);">
+          Open Result
+        </a>
+      </span>
+    </div>
+
+  </div>
+
+  {% else %}
+
+  <div class="banner warning">
+    No matching image found.
+  </div>
+
+  {% endif %}
+
+  <!-- BLOCKCHAIN -->
+
+  <h3 style="font-size:15px; color:var(--accent); margin-top:24px;">
+    ⛓️ Blockchain Verification
+  </h3>
+
+  {% if result.blockchain_result %}
+
+  <div class="readout">
+
+    <div class="row">
+      <span class="label">verified</span>
+
+      {% if result.blockchain_result.verified %}
+        <span class="value success">YES</span>
+      {% else %}
+        <span class="value fail">NO</span>
+      {% endif %}
+
+    </div>
+
+    {% if result.blockchain_result.timestamp %}
+    <div class="row">
+      <span class="label">timestamp</span>
+      <span class="value">
+        {{ result.blockchain_result.timestamp }}
+      </span>
+    </div>
+    {% endif %}
+
+    {% if result.blockchain_result.uploader %}
+    <div class="row">
+      <span class="label">uploader</span>
+      <span class="value">
+        {{ result.blockchain_result.uploader }}
+      </span>
+    </div>
+    {% endif %}
+
+  </div>
+
+  {% endif %}
+
+  <div class="retry-buttons">
+
+    <a class="retry-link" href="/?tab=upload">
+      Upload Another Photo
+    </a>
+
+    <a class="retry-link" href="/?tab=camera">
+      Capture Again
+    </a>
+
+  </div>
+
+</div>
+
+  {% else %}
+    <div class="card">
+      <div class="tabs">
+        <button class="tab" id="tab-upload" data-mode="upload">Upload Photo</button>
+        <button class="tab" id="tab-camera" data-mode="camera">Capture Photo</button>
+      </div>
+
+      <div class="panel-section" id="section-upload">
+        <form id="upload-form" action="/upload" method="POST" enctype="multipart/form-data">
+          <div class="drop-zone" id="drop-zone">
+            Click to choose an image<br />jpg &middot; jpeg &middot; png
+          </div>
+          <input type="file" id="file-input" name="photo" accept=".jpg,.jpeg,.png" />
+          <div class="submit-row">
+            <button type="submit" class="primary" id="upload-submit" disabled>Process image</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel-section" id="section-camera">
+        <div class="camera-frame">
+          <video id="video" autoplay playsinline></video>
+          <canvas id="canvas" style="display: none;"></canvas>
+        </div>
+        <div class="controls">
+          <button class="action" id="start-camera" type="button">Start camera</button>
+          <button class="action" id="capture-btn" type="button" disabled>Capture</button>
+          <button class="action" id="retake-btn" type="button" style="display:none;">Retake</button>
+        </div>
+        <form id="capture-form" action="/capture" method="POST">
+          <input type="hidden" name="image_data" id="image_data" />
+          <div class="submit-row">
+            <button type="submit" class="primary" id="capture-submit" disabled>Process image</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  {% endif %}
+
+<script>
+  const tabUpload = document.getElementById("tab-upload");
+  const tabCamera = document.getElementById("tab-camera");
+  const sectionUpload = document.getElementById("section-upload");
+  const sectionCamera = document.getElementById("section-camera");
+
+  function activateTab(mode) {
+    if (!tabUpload) return;
+    const isUpload = mode !== "camera";
+    tabUpload.classList.toggle("active", isUpload);
+    tabCamera.classList.toggle("active", !isUpload);
+    sectionUpload.classList.toggle("active", isUpload);
+    sectionCamera.classList.toggle("active", !isUpload);
+  }
+
+  if (tabUpload) {
+    const params = new URLSearchParams(window.location.search);
+    activateTab(params.get("tab") === "camera" ? "camera" : "upload");
+
+    tabUpload.addEventListener("click", () => activateTab("upload"));
+    tabCamera.addEventListener("click", () => activateTab("camera"));
+
+    const dropZone = document.getElementById("drop-zone");
+    const fileInput = document.getElementById("file-input");
+    const uploadSubmit = document.getElementById("upload-submit");
+
+    dropZone.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files.length > 0) {
+        dropZone.textContent = fileInput.files[0].name;
+        dropZone.classList.add("has-file");
+        uploadSubmit.disabled = false;
+      }
+    });
+
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const startCameraBtn = document.getElementById("start-camera");
+    const captureBtn = document.getElementById("capture-btn");
+    const retakeBtn = document.getElementById("retake-btn");
+    const captureSubmit = document.getElementById("capture-submit");
+    const imageDataInput = document.getElementById("image_data");
+    let stream = null;
+
+    startCameraBtn.addEventListener("click", async () => {
+
+  try {
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("Camera is not supported by this browser.");
+      return;
+    }
+
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        facingMode: "user"
+      },
+      audio: false
+    });
+
+    video.srcObject = stream;
+
+    await video.play();
+
+    captureBtn.disabled = false;
+
+  } catch (err) {
+
+    console.error("Camera error:", err);
+
+    if (err.name === "NotAllowedError") {
+
+      alert(
+        "Camera permission denied. " +
+        "Please allow Camera permission for 127.0.0.1 and reload the page."
+      );
+
+    } else if (err.name === "NotFoundError") {
+
+      alert(
+        "No camera found. Please check whether your laptop camera is available."
+      );
+
+    } else {
+
+      alert(
+        "Camera could not be started. " +
+        "Please check browser camera permission."
+      );
+    }
+  }
+});
+
+    captureBtn.addEventListener("click", () => {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d").drawImage(video, 0, 0);
+      imageDataInput.value = canvas.toDataURL("image/jpeg", 0.92);
+
+      video.style.display = "none";
+      canvas.style.display = "block";
+      captureBtn.style.display = "none";
+      retakeBtn.style.display = "inline-block";
+      captureSubmit.disabled = false;
+
+      if (stream) stream.getTracks().forEach(track => track.stop());
+    });
+
+    retakeBtn.addEventListener("click", () => {
+    imageDataInput.value = "";
+
+    video.style.display = "block";
+    canvas.style.display = "none";
+
+    captureBtn.style.display = "inline-block";
+    captureBtn.disabled = true;
+
+    retakeBtn.style.display = "none";
+    captureSubmit.disabled = true;
+
+    startCameraBtn.disabled = false;
+    });
+  }
+</script>
+
+</body>
+</html>
